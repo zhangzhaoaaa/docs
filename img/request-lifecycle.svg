@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <style>
+    .title { font: 700 18px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .subtitle { font: 600 14px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #334155; }
+    .box { fill: #ffffff; stroke: #1f2937; stroke-width: 1.5; rx: 8; }
+    .label { font: 13px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #111827; }
+    .muted { font: 12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #6b7280; }
+    .area { fill: #f8fafc; stroke: #94a3b8; stroke-dasharray: 4,4; rx: 10; }
+    .area-title { font: 700 12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #0f172a; }
+    .arrow { stroke: #0f172a; stroke-width: 1.5; marker-end: url(#arrow); fill: none; }
+    .arrow-text { font: 12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #374151; }
+    .key { font: 700 12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #0f766e; }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#0f172a" />
+    </marker>
+  </defs>
+
+  <text x="30" y="36" class="title">Tegg HTTP 请求生命周期（端到端）</text>
+  <text x="30" y="60" class="muted">从插件路由 → 控制器处理函数 → 容器解析实例 → 方法调用与返回</text>
+
+  <!-- Areas -->
+  <rect x="20" y="80" width="1160" height="170" class="area" />
+  <text x="30" y="98" class="area-title">plugin/controller 层</text>
+
+  <rect x="20" y="270" width="1160" height="210" class="area" />
+  <text x="30" y="288" class="area-title">core/runtime 容器层</text>
+
+  <rect x="20" y="500" width="1160" height="290" class="area" />
+  <text x="30" y="518" class="area-title">core/metadata 与 types 契约</text>
+
+  <!-- plugin/controller layer -->
+  <rect x="40" y="110" width="250" height="60" class="box" />
+  <text x="55" y="132" class="label">Egg Router 匹配 (method + path)</text>
+  <text x="55" y="154" class="muted">包括 host 匹配与冲突检测</text>
+
+  <rect x="330" y="110" width="280" height="60" class="box" />
+  <text x="345" y="132" class="label">HTTPMethodRegister.createHandler()</text>
+  <text x="345" y="154" class="muted">将请求映射到控制器参数</text>
+
+  <rect x="650" y="110" width="240" height="60" class="box" />
+  <text x="665" y="132" class="label">中间件链执行 (ACL/自定义)</text>
+  <text x="665" y="154" class="muted">顺序：控制器级 → 方法级</text>
+
+  <rect x="920" y="110" width="240" height="60" class="box" />
+  <text x="935" y="132" class="label">构造调用参数并调用方法</text>
+  <text x="935" y="154" class="muted">Reflect.apply(realMethod, realObj, args)</text>
+
+  <!-- runtime container layer -->
+  <rect x="40" y="310" width="260" height="70" class="box" />
+  <text x="55" y="332" class="label">EggContainerFactory.getOrCreateEggObject()</text>
+  <text x="55" y="354" class="muted">按原型与限定符解析实例</text>
+
+  <rect x="340" y="310" width="240" height="70" class="box" />
+  <text x="355" y="332" class="label">实例获取策略</text>
+  <text x="355" y="354" class="muted">SINGLETON / CONTEXT / ALWAYS_NEW</text>
+
+  <rect x="610" y="310" width="230" height="70" class="box" />
+  <text x="625" y="332" class="label">依赖注入</text>
+  <text x="625" y="354" class="muted">按 Inject 元数据获取依赖对象</text>
+
+  <rect x="870" y="310" width="290" height="70" class="box" />
+  <text x="885" y="332" class="label">返回 EggObject 与真实对象 realObj</text>
+  <text x="885" y="354" class="muted">可能附加 AOP 代理</text>
+
+  <!-- metadata & types area -->
+  <rect x="40" y="540" width="260" height="70" class="box" />
+  <text x="55" y="562" class="label">ControllerMetadata / MethodMeta</text>
+  <text x="55" y="584" class="muted">由装饰器生成并在加载期固化</text>
+
+  <rect x="340" y="540" width="250" height="70" class="box" />
+  <text x="355" y="562" class="label">EggPrototype / LoadUnit</text>
+  <text x="355" y="584" class="muted">标识对象原型与归属模块</text>
+
+  <rect x="620" y="540" width="240" height="70" class="box" />
+  <text x="635" y="562" class="label">LifecycleHook 契约</text>
+  <text x="635" y="584" class="muted">pre/post create &amp; destroy</text>
+
+  <rect x="880" y="540" width="280" height="70" class="box" />
+  <text x="895" y="562" class="label">RootProtoManager 路由绑定</text>
+  <text x="895" y="584" class="muted">method+path → 原型选择器</text>
+
+  <!-- Arrows: plugin/controller flow -->
+  <line x1="290" y1="140" x2="330" y2="140" class="arrow" />
+  <text x="290" y="130" class="arrow-text">命中规则</text>
+
+  <line x1="610" y1="140" x2="650" y2="140" class="arrow" />
+  <text x="610" y="130" class="arrow-text">注册的 handler</text>
+
+  <line x1="890" y1="140" x2="920" y2="140" class="arrow" />
+  <text x="820" y="130" class="arrow-text">args 映射</text>
+
+  <!-- Arrow from handler to container -->
+  <path d="M 1040 170 L 1040 300" class="arrow" />
+  <text x="1046" y="240" class="arrow-text">需要 realObj</text>
+
+  <!-- runtime arrows -->
+  <line x1="300" y1="345" x2="340" y2="345" class="arrow" />
+  <text x="305" y="335" class="arrow-text">选择策略</text>
+
+  <line x1="580" y1="345" x2="610" y2="345" class="arrow" />
+  <text x="560" y="335" class="arrow-text">注入链</text>
+
+  <line x1="840" y1="345" x2="870" y2="345" class="arrow" />
+  <text x="800" y="335" class="arrow-text">返回</text>
+
+  <!-- Arrow back to handler -->
+  <path d="M 1015 380 L 1015 170" class="arrow" />
+  <text x="1022" y="280" class="arrow-text">eggObj.obj</text>
+
+  <!-- metadata arrows -->
+  <path d="M 470 540 L 470 450" class="arrow" />
+  <text x="350" y="500" class="arrow-text">限定信息影响容器解析</text>
+
+  <path d="M 180 540 L 180 210" class="arrow" />
+  <text x="60" y="240" class="arrow-text">参数/路由映射依据</text>
+
+  <path d="M 1020 540 L 1020 210" class="arrow" />
+  <text x="910" y="240" class="arrow-text">路由根原型选择</text>
+
+  <!-- Legend -->
+  <text x="30" y="805" class="subtitle">关键数据：</text>
+  <text x="140" y="805" class="key">HTTPRequest → 参数映射 → EggPrototype → EggObject → 响应体</text>
+</svg>

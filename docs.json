@@ -1,7 +1,8 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Tegg 文档",
+  "description": "Tegg 文档：系统化介绍 Tegg 的动机与分层设计、核心机制（装饰器、调用链、请求生命周期）以及上手与实践指南，帮助 Egg/Node.js 开发者快速上手与深入掌握。",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
@@ -11,81 +12,35 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Tegg 文档指南",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "入门",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "doc/why",
+              "doc/tegg-vs-egg",
+              "doc/choose-egg-tegg-or-tegg-only"
             ]
           },
           {
-            "group": "Customization",
+            "group": "上手指南",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "doc/tegg-user-guide"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "核心机制",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "doc/decorators-guide",
+              "doc/decorator-to-invoke",
+              "doc/request-lifecycle"
             ]
           }
         ]
       }
     ],
     "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
+      "anchors": []
     }
   },
   "logo": {
@@ -93,35 +48,14 @@
     "dark": "/logo/dark.svg"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
+    "links": [],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "GitHub",
+      "href": "https://github.com/eggjs/tegg"
     }
   },
   "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    "options": ["copy", "view"]
   }
 }

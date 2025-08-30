@@ -1,0 +1,73 @@
+---
+title: "常用装饰器"
+---
+
+本文对常见的 HTTP 与 IoC 装饰器给出双视角说明：
+- 使用视角：如何在控制器/服务中使用
+- 内部视角：装饰器如何转化为元数据，如何影响容器解析与运行时行为
+
+## 1) 控制器与方法装饰器
+
+### HTTPController(base, options)
+- 使用示例：
+```ts
+@HTTPController({ path: '/api/v1' })
+export class UserController {}
+```
+记录控制器基路径、host、控制器中间件等信息于控制器元数据。
+
+### HTTPMethod(method, path)
+- 使用示例：
+```ts
+@HTTPMethod({ method: 'GET', path: '/users/:id' })
+async getUser(@HTTPParam('id') id: string) {}
+```
+注册方法级路由、方法中间件、参数映射信息(MethodMeta)。
+
+### 参数装饰器
+- 使用示例：
+```ts
+@HTTPMethod({ method: 'POST', path: '/users' })
+async create(
+  @HTTPBody() body: any,
+  @HTTPHeaders('x-request-id') rid: string,
+  @Context() ctx: any,
+) {}
+```
+记录参数在请求对象中的读取位置与转换规则，handler 创建时据此装配调用参数。
+
+## 2) IoC 与生命周期
+
+### Inject(token?) / InjectOptional
+- 使用示例：
+```ts
+export class UserService {
+  constructor(@Inject() private repo: UserRepo) {}
+}
+```
+在原型元数据上登记依赖点，容器在创建对象时解析对应 EggObject 注入。
+
+### SingletonProto / ContextProto
+- 使用示例：
+```ts
+@SingletonProto()
+export class Repo {}
+```
+指定原型实例化策略（SINGLETON 或 CONTEXT），影响 getOrCreateEggObject 的缓存与作用域。
+
+### Middleware(fn or id)
+- 使用示例：
+```ts
+@Middleware([auth, acl])
+@HTTPMethod({ method: 'GET', path: '/secure' })
+async secure() {}
+```
+记录中间件链并在 handler 执行前后按顺序运行。
+
+### Host(pattern)
+- 使用示例：
+```ts
+@HTTPController({ path: '/', host: 'api.example.com' })
+export class ApiController {}
+```
+在路由注册时参与 host 维度的匹配、冲突检测与选择。

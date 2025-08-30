@@ -1,0 +1,160 @@
+---
+title: "Tegg 框架用户指南（面向 Egg.js 场景）"
+---
+
+本指南面向使用 Egg.js 的团队，系统性介绍 Tegg 的架构、核心概念、与 Egg 的集成方式以及常见用法。整体风格参考 Egg 企业级、插件化、约定优于配置的文档习惯，帮助你快速落地与长期维护。
+
+## 1. 框架概览
+
+Tegg 是一套基于装饰器的模块化与依赖注入体系，为服务治理、生命周期管理、动态装配与可测试性提供统一能力。整体由三层构成：
+- 装饰器与元数据：通过各类装饰器声明模块、原型、注入关系与生命周期；元数据组件负责采集并组织这些声明。
+- 加载与运行时：Loader 负责按约定发现模块与构建依赖图；Runtime 负责实例化、作用域管理与生命周期回调。
+- Egg 集成与插件生态：通过 @eggjs/tegg-plugin、dal/orm/schedule/aop/ajv 等插件与 Egg 应用深度融合。
+
+核心特性：
+- 约定优于配置的模块发现与装配
+- 明确的生命周期与作用域（Proto）
+- 强类型与装饰器驱动的依赖注入
+- 可替换实现与动态注入
+- 与 Egg 生态的一等集成（ctx、schedule、logger 等）
+
+## 2. 安装与工程约定
+
+1. 核心库：
+  - @eggjs/tegg（主装饰器与聚合导出）
+  - @eggjs/tegg-runtime（运行时能力）
+2. Egg 插件：
+  - @eggjs/tegg-plugin（Egg 集成）
+3. TypeScript：建议 tsconfig 继承 @eggjs/tsconfig 以对齐编译选项。
+4. Node 版本：>= 14。全家桶版本通常保持一致（如 3.61.0）。
+5. 工程约定：
+  - 模块目录：`app/module`，每个子目录对应一个模块。
+  - 模块文件：`*.module.ts`，定义模块的元数据与依赖。
+  - 原型文件：`*.proto.ts`，定义原型的元数据与依赖。
+  - 服务文件：`*.service.ts`，定义服务的实现与依赖。
+  - 控制器文件：`*.controller.ts`，定义控制器的路由与依赖。
+  - 中间件文件：`*.middleware.ts`，定义中间件的实现与依赖。
+  - 插件文件：`*.plugin.ts`，定义插件的元数据与依赖。
+
+6. 启用插件（config/plugin.js）：
+- 根据需要开启 @eggjs/tegg 相关插件与周边能力（dal、orm、aop、schedule、ajv 等）。
+
+7. 模块发现（config/config.default.js）：
+- 配置模块文件匹配模式以便 Loader 按约定扫描装饰器并构建依赖图。
+
+## 3. 核心概念：Proto 与作用域
+
+Tegg 将实例生命周期抽象为三种原型（Proto）：
+- ContextProto：请求级实例，绑定一次请求/上下文生命周期。
+- SingletonProto：应用级单例，随应用启动/关闭而创建与销毁。
+- MultiInstanceProto：多实例模式，常用于按配置或标识符创建一组独立对象（如多数据源）。
+
+典型场景：
+- Web 请求处理链路：业务 Service 使用 ContextProto；
+- 基础设施服务：连接池、客户端等用 SingletonProto；
+- 多租户或多数据源：使用 MultiInstanceProto 管理隔离实例。
+
+## 4. 生命周期管理
+
+支持方法钩子与装饰器两种方式：
+- 方法钩子：postConstruct → preInject → postInject → init → preDestroy → destroy。
+- 对应装饰器：@LifecyclePostConstruct、@LifecyclePreInject、@LifecyclePostInject、@LifecycleInit、@LifecyclePreDestroy、@LifecycleDestroy。
+
+应用在实例化、注入前后与销毁阶段，用于准备资源、建立连接、健康检查与释放资源。
+
+## 5. 依赖注入与限定符
+
+1. 注入装饰器：
+  - @Inject：声明依赖，支持属性注入与构造器参数注入。
+  - @InjectOptional：声明可选依赖，不存在时跳过。
+2. 限定符（Qualifier）：用于在多实现或多实例场景下选择具体实现：
+  - @InitTypeQualifier：基于初始化类型/标识选择。
+  - @ModuleQualifier：跨模块选择实现。
+  - @EggQualifier：与 Egg 上下文/应用相关的限定符。
+
+通过限定符与类型信息，Tegg 能在装载期构建稳定的依赖图，并在运行期进行可靠解析。
+
+## 6. 与 Egg.js 的一等集成
+
+1. Egg 上下文对象注入：可将 Egg 的上下文对象、logger 以及自定义日志注入到模块中。
+2. Schedule 兼容：在定时任务等无请求上下文的场景，通过 ctx.beginModuleScope 创建模块作用域来获取有上下文语义的对象。
+3. 方法包装：支持对 Egg ctx 方法进行装饰/包装，便于统一拦截与增强（如 AOP 场景）。
+
+## 7. 背景任务与异步编排
+ @eggjs/tegg-background-task：提供声明式的后台任务能力，可配置超时与隔离策略，适合与请求解耦的异步逻辑。
+
+## 8. 动态注入（Dynamic Inject）
+通过接口/抽象定义能力与契约，再按限定符或配置在运行时选择具体实现，方便灰度、插件化替换与多实现共存。
+
+## 9. 测试与可测性
+
+1. 测试工具：
+  - 提供创建 mock 上下文、获取已装配实例的工具方法，便于在单测/集成测试中验证依赖关系与生命周期。
+2. 建议：
+  - 用接口定义服务边界，配合限定符替换实现；
+  - 针对生命周期钩子写健康检查与资源释放用例；
+  - 对多实例配置准备测试隔离数据与独立清理逻辑。
+
+## 10. 模块配置与加载
+
+1. 模块配置：
+  - config/module.json：声明式模块配置，支持本地路径与 npm 包两种来源；
+  - Loader 会按约定扫描模块目录，读取装饰器元数据并注册到运行时。
+2. 模块加载：
+  - 应用启动时，Loader 会根据配置加载模块；
+  - 模块加载顺序遵循依赖图，确保依赖关系正确；
+  - 模块加载失败会导致应用启动失败。
+
+## 11. 公共 API（@eggjs/tegg 聚合导出）
+
+@eggjs/tegg 统一导出常用能力，便于业务按需引入：
+- 核心装饰器与工具：core-decorator、lifecycle、metadata、common-util；
+- 业务装饰器：controller、eventbus、dal-decorator、orm-decorator、schedule-decorator、aop-decorator、ajv-decorator；
+- 运行时与加载：tegg-runtime、loader；
+- 其他：dynamic-inject、background-task、types。
+
+## 12. 生态插件速览
+1. AOP：横切逻辑（埋点、鉴权、限流、熔断等）
+2. ORM/DAL：数据建模与数据访问装饰器；支持表/索引声明与校验
+3. Schedule：声明式定时任务
+4. AJV：基于 JSON Schema 的参数/配置校验 
+5. EventBus：事件驱动架构支持
+
+## 13. 快速上手示例（思路）
+
+1) 定义一个 Service：
+- 使用 @SingletonProto 或 @ContextProto 声明作用域；
+- 在类上/构造器中通过 @Inject 注入依赖（例如另一个 Service 或数据访问对象）。
+
+2) 在 Controller 中使用：
+- 控制器类中注入 Service；
+- 在请求处理方法内调用 Service 完成业务逻辑；
+- 若在无请求上下文（如 schedule），通过 ctx.beginModuleScope 获取作用域对象。
+
+3) 测试：
+- 使用测试工具创建 mock 上下文；
+- 获取待测实例，断言注入关系、生存期行为与边界条件。
+
+## 14. 版本与兼容性建议
+
+1. Node.js >= 14
+2. tegg 全家桶版本对齐（如 3.61.0）以避免不一致带来的运行时问题
+3. TypeScript 与装饰器配置按 @eggjs/tsconfig 对齐，确保编译行为一致
+
+## 15. 常见问题（FAQ）
+
+1. 模块未被发现？
+  - 检查 config/config.default.js 中的模块匹配规则与目录结构；
+  - 确认编译产物包含装饰器元数据（tsconfig 设置）。
+2. 注入失败或多实现冲突？
+  - 使用限定符（InitType/Module/Egg）精确选择实现；
+  - 在测试中显式替换实现并断言。
+3. 生命周期顺序与资源管理？
+  - 按需实现钩子/装饰器方法；
+  - 在 preDestroy/destroy 释放连接与句柄，避免泄漏。
+4. 与 Egg.js 集成问题？
+  - 确认 Egg 版本与 tegg 版本对齐；
+  - 检查 Egg 插件配置是否正确；
+  - 查看 Egg 日志，查找潜在错误
+
+  

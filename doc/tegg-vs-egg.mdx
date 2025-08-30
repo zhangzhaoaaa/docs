@@ -1,0 +1,58 @@
+---
+title: "Tegg 与 Egg.js 的异同"
+---
+
+## 一句话结论
+1. Egg.js 是基于 Koa 的企业级 Web 框架，强调插件生态、约定优于配置与工程化实践。
+2. Tegg 是装饰器驱动的模块化与依赖注入体系，强调模块边界、生命周期、动态装配与可测试性；可与 Egg 深度集成，也可独立使用。
+
+## 共同点
+1. 企业级工程化取向，支持 TypeScript，强调插件化与“约定优于配置”的开发体验。
+2. 适合中大型团队协作与长期维护，鼓励模块化拆分与清晰边界。
+
+## 主要差异
+### 1. 架构定位
+  - Egg.js：应用框架。围绕 controller/service、路由、中间件、配置、插件与多进程（app/agent）模型构建 HTTP 应用。
+  - Tegg：模块/DI 运行时。围绕装饰器、元数据、Loader、Runtime 管理模块关系、作用域与生命周期，可承载 Web 也可非 Web。
+### 2. 开发范式
+  - Egg.js：目录约定 + 插件化（controller/service/config/plugin），贴近 MVC/分层实践。
+  - Tegg：装饰器 + 强类型驱动（@Inject/@InjectOptional 等），限定符（Qualifier）与声明式生命周期。
+### 3. 生命周期模型
+  - Egg.js：应用（app/agent）与请求（ctx）的两层主要生命周期。
+  - Tegg：Proto 更细：ContextProto（请求级）、SingletonProto（应用级）、MultiInstanceProto（多实例/多租户等）。
+### 4. 依赖管理与替换
+  - Egg.js：以工程目录与插件组合为主，依赖替换多在工程/配置层处理。
+  - Tegg：原生 DI 与限定符机制，支持多实现共存、灰度替换、动态装配，测试可替换更友好。
+### 5. 配置与模块发现
+  - Egg.js：config/config.default.js、config/plugin.js，按目录约定加载。
+  - Tegg：装饰器收集元数据 + Loader 扫描，也支持 config/module.json 声明模块来源（本地/包）。
+### 6. 运行形态
+  - Egg.js：承载 HTTP、进程模型（app/agent）、中间件、路由等。
+  - Tegg：可作为 Egg 插件深度集成，也可 standalone 作为纯模块运行时。
+### 7. 插件生态关注点 
+  - Egg.js：HTTP、鉴权、日志、监控、任务、数据库等应用层生态。
+  - Tegg：aop/orm/dal/schedule/ajv/eventbus 等通过装饰器统一声明并与运行时配合。
+### 8. 可测试性与解耦
+  - Egg.js：配合 egg-mock 等工具，围绕 ctx/app 进行单测/集成测试。
+  - Tegg：DI + 生命周期原生支持，边界清晰、实现可替换、Mock 更直接，可测试性更强。
+
+## 适用场景
+1. 只用 Egg.js：中小型 Web 服务，DI/多实现诉求不强，目录约定 + 插件即可胜任。
+2. 引入 Tegg：大型/长周期项目，需要明确模块边界、抽象契约、可替换实现、多数据源/多租户、AOP 拦截、事件驱动等复杂诉求。
+3. Tegg standalone：非 HTTP 的 Worker/消费进程/批处理/定时脚本，或沉淀可复用的领域层库。
+
+## 组合使用建议（Egg + Tegg）
+1. Egg 负责“传输层与工程化”（HTTP、路由、中间件、进程模型、插件生态、日志配置等）。
+2. Tegg 负责“模块化/DI/生命周期/可测试性”（@Inject、Qualifier、Proto、Lifecycle、AOP、DAL/ORM/Schedule/AJV）。
+3. 在无请求上下文（如 schedule/worker）通过 ctx.beginModuleScope 获取具有上下文语义的依赖实例。
+
+## 渐进式引入路径
+1) 在现有 Egg 应用引入 @eggjs/tegg-plugin，先跑通集成。
+2) 将核心 Service 改成 Tegg 模块（装饰器 + @Inject），建立清晰依赖图与生命周期。
+3) 引入限定符与动态注入，治理多实现/多数据源/灰度切换。
+4) 按需落地 AOP/DAL/ORM/Schedule/AJV 装饰器生态与统一治理。
+
+## 常见误区澄清
+1. Tegg 不是替代 Egg 的另一个 Web 框架，而是模块与运行时层增强；与 Egg 是互补关系。
+2. 引入 Tegg 不会强制改变 Egg 的路由/中间件/插件体系，可按需迁移业务到 Tegg 模块。
+3. Tegg 的主要收益在规模化与可维护性：边界清晰、依赖可控、实现可替换、测试友好。

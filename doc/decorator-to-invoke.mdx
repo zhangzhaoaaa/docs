@@ -1,0 +1,55 @@
+---
+title: "从装饰器声明到容器实例调用（端到端链路）"
+---
+
+配套图：
+
+<p>
+  • 架构与组件/时序：<a href="/img/tegg-architecture-sequence.svg" target="_blank" rel="noopener">打开大图</a>
+</p>
+<p>
+  • HTTP 请求生命周期：<a href="/doc/request-lifecycle" target="_blank" rel="noopener">跳转到生命周期文档</a>
+</p>
+
+本文梳理“声明 → 元数据 → 装载 → 运行时 → 插件集成 → 方法调用”的完整链路，并给出源码线索，便于按图索骥深入实现。
+
+## 1. 装饰器阶段（声明期）
+- 在控制器/服务/方法/参数上使用装饰器（如 @HTTPController、@HTTPMethod、@HTTPBody、@Inject、@SingletonProto 等）。
+- 装饰器将声明信息收集为元数据条目（控制器级、方法级、参数级、依赖点、原型策略）。
+
+产物：
+- ControllerMetadata（控制器名、基路径、Host、中间件、方法清单）
+- MethodMeta（方法名、中间件、上下文参数位置等）
+- 参数映射元数据（Body/Param/Query/Headers/Cookies/Request/Context）
+- 原型与限定（EggPrototype、生命周期策略 SINGLETON/CONTEXT/ALWAYS_NEW）
+
+## 2. 装载阶段（Loader/LoadUnit）
+- 应用启动时，Loader 扫描模块，解析并构造 LoadUnit 与 EggPrototype 图谱。
+- 控制器相关元数据注册到 ControllerMetadataManager；与 RootProtoManager/HTTP 路由注册器建立绑定关系。
+
+产物：
+- LoadUnit 图、EggPrototype 工厂/选择器
+- 控制器与路由注册的待执行描述（method+path → 原型/方法）
+
+## 3. 插件集成（plugin/controller）
+- ControllerRegisterFactory 基于控制器类型（HTTP、MCP 等）创建对应的 Register。
+- HTTPMethodRegister 在框架路由系统中注册路由，生成实际 handler：
+  - 执行中间件链（控制器级 → 方法级）
+  - 读取参数装饰器元数据，按来源组装调用参数
+  - 通过容器获取/创建控制器实例，拿到 realObj 与 realMethod
+  - 反射调用方法，处理返回值写入响应
+
+## 4. 运行时容器（core/runtime）
+- EggContainerFactory.getOrCreateEggObject 根据原型与限定信息解析实例：
+  - 按生命周期策略复用或创建对象；在创建时注入依赖（根据 @Inject 注册的依赖点）
+  - 执行 LifecycleHook（pre/post create/destroy）
+- 返回 EggObject（包装真实对象与上下文信息），供 handler 取出真实对象并调用方法。
+
+## 5. 请求往返与可观测性
+- 任何阶段异常将被统一错误处理转换为 HTTP 错误响应；
+- 在关键节点（路由命中、实例解析、调用、返回）可埋点观测。
+
+## 6. 源码线索（文件级索引）
+- 控制器元数据与注册：plugin/controller/lib/ControllerMetadata.ts、ControllerRegisterFactory.ts、HTTPMethodRegister.ts
+- 容器与原型契约：core/types/EggPrototype.ts、EggObject.ts、LoadUnit.ts、LifecycleHook.ts、MethodMeta.ts、EggContext.ts
+- 请求生命周期配套图：/img/request-lifecycle.svg
