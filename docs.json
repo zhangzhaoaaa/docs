@@ -55,6 +55,11 @@
       "href": "https://github.com/eggjs/tegg"
     }
   },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/coolzeromike"
+    }
+  },
   "contextual": {
     "options": ["copy", "view"]
   }
