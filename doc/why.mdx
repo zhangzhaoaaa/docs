@@ -78,7 +78,7 @@ title: "为什么这样设计 Tegg"
 下图展示 tegg 的关键流转与边界：装饰器将“意图”转化为元数据；装载器扫描并构建 LoadUnit/Prototype；运行时负责 DI/生命周期/上下文（基于 AsyncLocalStorage）；插件层与 Egg 集成。
 
 <p align="center">
-  <img src="/public/img/tegg-architecture-sequence.svg" alt="Tegg 架构时序/组件图" width="960" />
+  <img src="/img/tegg-architecture-sequence.svg" alt="Tegg 架构时序/组件图" width="960" />
 </p>
 关键数据结构（示例清单）：
 - Metadata：ClassMetadata、PropertyMetadata、ParamMetadata
