@@ -25,7 +25,8 @@
           {
             "group": "上手指南",
             "pages": [
-              "doc/tegg-user-guide"
+              "doc/tegg-user-guide",
+              "doc/tegg-examples"
             ]
           },
           {
