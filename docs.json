@@ -32,6 +32,7 @@
             "group": "核心机制",
             "pages": [
               "doc/decorators-guide",
+              "doc/aop-guide",
               "doc/decorator-to-invoke",
               "doc/request-lifecycle"
             ]

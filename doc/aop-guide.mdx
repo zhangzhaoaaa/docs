@@ -1,0 +1,140 @@
+---
+title: "AOP 指南"
+---
+
+# Tegg AOP 使用指南：从入门到进阶
+
+本文介绍如何在 Tegg 中使用 AOP（面向切面编程），涵盖基础概念、从简单到进阶的织入方式以及可传参与执行顺序，附带最小可用代码样例与常见问题排查。
+
+## 1. 基本概念
+- Advice：切面逻辑的载体，一个类，需使用 `@Advice()` 装饰，内部可实现以下任意方法：
+  - `beforeCall(ctx)`：目标方法执行前
+  - `around(ctx, next)`：环绕执行（唯一可改变返回值的位置）
+  - `afterReturn(ctx, result)`：目标方法成功返回后
+  - `afterThrow(ctx, error)`：目标方法抛出异常后
+  - `afterFinally(ctx)`：无论成功/失败都会执行
+- AdviceContext：传入 Advice 的上下文，含 `that`（目标实例）、`method`（方法名）、`args`（参数数组）、`adviceParams`（自定义参数）。
+- 执行顺序：`beforeCall → around → afterReturn/afterThrow → afterFinally`。
+
+## 2. 快速上手：给某个方法加切面（@Pointcut）
+最直接的方式是在目标方法上标注 `@Pointcut(AdviceClass, options)`。
+
+1) 定义一个 Advice：
+```ts
+import { Advice, IAdvice, AdviceContext } from '@eggjs/tegg/aop';
+import { AccessLevel } from '@eggjs/tegg';
+
+@Advice({ accessLevel: AccessLevel.PUBLIC })
+export class LogAdvice implements IAdvice {
+  async around(ctx: AdviceContext, next: () => Promise<any>) {
+    const { that, method, args } = ctx;
+    (that as any).app.coreLogger.info('[AOP][before] %s.%s args=%j', that.constructor?.name, String(method), args);
+    try {
+      const res = await next();
+      (that as any).app.coreLogger.info('[AOP][afterReturn] %s.%s result=%j', that.constructor?.name, String(method), res);
+      return res;
+    } catch (err) {
+      (that as any).app.coreLogger.error('[AOP][afterThrow] %s.%s error=%s', that.constructor?.name, String(method), err);
+      throw err;
+    } finally {
+      (that as any).app.coreLogger.info('[AOP][finally] %s.%s', that.constructor?.name, String(method));
+    }
+  }
+}
+```
+
+2) 在目标 Service 方法上织入：
+```ts
+import { SingletonProto } from '@eggjs/tegg';
+import { Pointcut } from '@eggjs/tegg/aop';
+import { LogAdvice } from './advice/LogAdvice';
+
+@SingletonProto({})
+export class DemoService {
+  @Pointcut(LogAdvice)
+  async handleParams(name: string) {
+    return `hello, ${name}`;
+  }
+}
+```
+
+说明：
+- 目标类建议是受管 Bean（如 `@SingletonProto`/`@ContextProto`），确保容器能创建与代理。
+- `@Pointcut` 只影响被标注的方法，不会影响同类其他方法。
+
+## 3. 批量织入：集中声明（@Crosscut）
+当需要给多个类/方法统一织入时，推荐在 Advice 类上使用 `@Crosscut(...)` 集中声明，便于集中管理：
+
+- CLASS 精确匹配（类 + 方法名，支持继承匹配）：
+```ts
+import { Advice, Crosscut, PointcutType } from '@eggjs/tegg/aop';
+import { AccessLevel } from '@eggjs/tegg';
+import { DemoService } from '../DemoService';
+
+@Crosscut({ type: PointcutType.CLASS, clazz: DemoService, methodName: 'handleParams' })
+@Advice({ accessLevel: AccessLevel.PUBLIC })
+export class LogAdvice { /* ... */ }
+```
+
+- NAME 正则匹配（按类名/方法名批量匹配）：
+```ts
+@Crosscut({ type: PointcutType.NAME, className: /Service$/, methodName: /^handle/ })
+@Advice({ accessLevel: AccessLevel.PUBLIC })
+export class LogAdvice { /* ... */ }
+```
+上例会统一织入所有以 `Service` 结尾的类中、以 `handle` 开头的方法。
+
+- CUSTOM 自定义回调（任意逻辑）：
+```ts
+@Crosscut({
+  type: PointcutType.CUSTOM,
+  callback: (clazz, method) => clazz.name.endsWith('Service') && /^handle(Params|Foo)$/.test(String(method)),
+})
+@Advice()
+export class LogAdvice { /* ... */ }
+```
+
+## 4. 传参与执行顺序（adviceParams / order）
+- 传参：可在 `@Pointcut` 或 `@Crosscut` 的 options 里传 `adviceParams`，在 Advice 中用 `ctx.adviceParams` 读取。
+```ts
+@Crosscut(
+  { type: PointcutType.NAME, className: /Service$/, methodName: /^handle/ },
+  { adviceParams: { traceIdHeader: 'x-trace-id' } }
+)
+@Advice()
+export class LogAdvice implements IAdvice<object, { traceIdHeader: string }> {
+  async beforeCall(ctx) {
+    const header = ctx.adviceParams?.traceIdHeader ?? 'x-trace-id';
+    (ctx.that as any).app.coreLogger.info('trace header = %s', header);
+  }
+}
+```
+- 执行顺序：多个切面将按 `order` 升序执行；`around` 的包裹顺序亦受 `order` 影响。默认值：
+  - `@Crosscut` 默认 `order = 100`
+  - `@Pointcut` 默认 `order = 1000`
+通常“全局切面”设更小的 `order`，以在链路外层先处理。
+
+## 5. 实战参考（示例工程）
+在示例中，我们采用 NAME 规则统一织入：
+```ts
+@Crosscut({ type: PointcutType.NAME, className: /Service$/, methodName: /^handle/ })
+@Advice({ accessLevel: AccessLevel.PUBLIC })
+export class LogAdvice implements IAdvice { /* 记录 before/afterReturn/afterThrow/finally */ }
+```
+这样任意 `XxxService.handle*` 方法都会自动经过该切面，无需逐个标注。
+
+## 6. 常见问题排查
+- 织入未生效？
+  - 是否有显式织入（方法上 `@Pointcut` 或 Advice 上 `@Crosscut`）？
+  - 目标类是否为受管对象（例如 `@SingletonProto`/`@ContextProto`）？
+  - 正则是否匹配实际类名/方法名（留意类名构建时可能被改名）？
+  - 插件是否启用（确保 `@eggjs/tegg-plugin` 已开启）？
+- 多切面顺序混乱？
+  - 调整 `order`，数值更小的先执行（更外层）。
+- 异常被吞？
+  - 在 `around` 中 `catch` 后需要 `throw`，否则上层感知不到异常。
+
+## 7. 小技巧
+- 使用 `ctx.that` + 应用上下文日志：`(ctx.that as any).app.coreLogger.*` 便捷打点。
+- 结合 `adviceParams` 传递特定配置（开关、白名单、header 名等）。
+- NAME 方案是批量治理的常用选择；CLASS 适合精准治理；CUSTOM 用于复杂过滤。
